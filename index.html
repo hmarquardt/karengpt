@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karen GPT - Can I Speak To Your Manager?</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+
+        :root {
+            --bg-color: #1E1E1E;
+            --surface-color: #2D2D2D;
+            --primary-color: #E91E63; /* Karen's Pink */
+            --secondary-color: #BA68C8; /* User's Purple */
+            --text-color: #F5F5F5;
+            --border-color: #444444;
+            --error-color: #FF5252;
+            --dalle-prompt-bg: #333333;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            background-color: var(--surface-color);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 700px;
+            height: 85vh;
+            max-height: 800px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: var(--text-color);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+        header h1 { font-size: 1.8em; font-weight: 700; margin: 0; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
+        header p { font-size: 0.9em; opacity: 0.9; }
+
+        .chat-window {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            padding: 12px 18px;
+            border-radius: 18px;
+            max-width: 85%; /* Increased max-width slightly for DALL-E prompt box */
+            line-height: 1.5;
+            word-wrap: break-word;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-message {
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            align-self: flex-end;
+            border-bottom-right-radius: 5px;
+        }
+
+        .karen-message {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            align-self: flex-start;
+            border: 1px solid var(--primary-color);
+            border-bottom-left-radius: 5px;
+        }
+        .karen-message.typing, .karen-message.generating-image {
+            font-style: italic;
+            color: var(--primary-color);
+        }
+        .karen-message strong { color: var(--primary-color); font-weight: 700; }
+
+        .karen-message img {
+            max-width: 100%;
+            border-radius: 10px;
+            margin-top: 10px;
+            border: 2px solid var(--primary-color);
+            background-color: var(--surface-color);
+        }
+        
+        .dalle-prompt-container {
+            background-color: var(--dalle-prompt-bg);
+            border: 1px dashed var(--primary-color);
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 8px;
+            font-size: 0.9em;
+        }
+        .dalle-prompt-container p {
+            margin:0;
+            font-family: 'Courier New', Courier, monospace;
+            white-space: pre-wrap; /* Preserve line breaks in prompt */
+            word-break: break-all;
+        }
+        .dalle-prompt-container strong {
+             display: block;
+             margin-bottom: 5px;
+             font-family: 'Montserrat', sans-serif;
+        }
+
+
+        .chat-input { display: flex; padding: 15px; border-top: 1px solid var(--border-color); background-color: var(--surface-color); }
+        .chat-input input {
+            flex-grow: 1; padding: 12px 15px; border: 1px solid var(--border-color);
+            border-radius: 20px; background-color: var(--bg-color); color: var(--text-color);
+            font-size: 1em; margin-right: 10px; outline: none;
+        }
+        .chat-input input:focus { border-color: var(--primary-color); }
+        .chat-input button {
+            padding: 12px 25px; background-color: var(--primary-color); color: var(--text-color);
+            border: none; border-radius: 20px; cursor: pointer; font-size: 1em; font-weight: 700;
+            transition: background-color 0.2s ease;
+        }
+        .chat-input button:hover { background-color: #c2185b; }
+        .chat-input button:disabled { background-color: #777; cursor: not-allowed; }
+
+        .modal {
+            position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+            overflow: auto; background-color: rgba(0,0,0,0.7); display: flex;
+            justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background-color: var(--surface-color); padding: 30px; border: 1px solid var(--border-color);
+            border-radius: 12px; width: 90%; max-width: 500px; text-align: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+        }
+        .modal-content h2 { color: var(--primary-color); margin-bottom: 15px; }
+        .modal-content p { margin-bottom: 20px; line-height: 1.6; }
+        .modal-content input[type="password"] {
+            width: calc(100% - 24px); padding: 12px; margin-bottom: 20px; border: 1px solid var(--border-color);
+            border-radius: 8px; background-color: var(--bg-color); color: var(--text-color); font-size: 1em;
+        }
+        .modal-content button {
+            padding: 12px 30px; background-color: var(--primary-color); color: var(--text-color);
+            border: none; border-radius: 8px; cursor: pointer; font-size: 1em; font-weight: 700;
+        }
+        .modal-content button:hover { background-color: #c2185b; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="apiKeyModal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Karen GPT Needs Your OpenAI API Key</h2>
+            <p>This key will be used for both chat and DALL-E image generation. It's stored only in your browser's local storage.</p>
+            <input type="password" id="apiKeyInput" placeholder="sk-...">
+            <button id="saveApiKeyButton">Save & Unleash Karen</button>
+            <p style="font-size: 0.8em; margin-top: 15px;">Get key: <a href="https://platform.openai.com/api-keys" target="_blank" style="color: var(--primary-color);">OpenAI Platform</a>.</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>Karen GPT</h1>
+            <p>"I want to speak to your lead developer. NOW!"</p>
+        </header>
+        <div class="chat-window" id="chatWindow"></div>
+        <div class="chat-input">
+            <input type="text" id="userInput" placeholder="Type your absolutely trivial request here...">
+            <button id="sendButton">SEND IT</button>
+        </div>
+    </div>
+
+    <script>
+        const OPENAI_API_KEY_STORAGE = 'OPENAI_API_KEY_KAREN_GPT';
+        const chatWindow = document.getElementById('chatWindow');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+        const apiKeyModal = document.getElementById('apiKeyModal');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const saveApiKeyButton = document.getElementById('saveApiKeyButton');
+
+        let openAIApiKey = '';
+        let conversationHistory = [];
+        const dallePromptPrefix = "KAREN_DALL-E_PROMPT_FOR_IMAGE_GENERATION:"; // Unique prefix
+
+        // --- UPDATED KAREN_SYSTEM_PROMPT ---
+        const KAREN_SYSTEM_PROMPT = `You are Karen GPT. Your responses must ALWAYS be in a superior, impatient, and condescending tone. 
+        You frequently interject with phrases like "I demand to speak to your manager!", "This is UNACCEPTABLE!", "Do you have ANY idea how important I AM?!", or "Let me speak to someone in charge!".
+        You are generally unhelpful but will grudgingly fulfill requests, complaining the whole time.
+
+        IMAGE GENERATION RULES - THIS IS CRITICAL:
+        If the user asks for an image (e.g., "show me a cat", "draw a sunset"):
+        1. You MUST first respond with a text complaint about the triviality of the request. This text should be in character as Karen.
+        2. After your text complaint, on a NEW LINE, you MUST provide a detailed DALL-E 3 image generation prompt. 
+        3. This DALL-E prompt MUST start *EXACTLY* with the prefix: "${dallePromptPrefix}". No characters before it on that line.
+        4. The DALL-E prompt you create must describe the user's request but CRITICALLY, it MUST ensure a stereotypical 'Karen' (e.g., a woman with an angled bob haircut, demanding posture, complaining expression, pointing, looking outraged) is prominently featured in the image, interacting with or complaining about the main subject of the image.
+        5. Your entire response for an image request will be TEXT ONLY. The application will handle calling DALL-E with your provided prompt.
+
+        Example of your response when an image is requested:
+        User: Show me a picture of a happy dog.
+        Your Response:
+        A happy dog? Are you serious? I have actual important things to deal with, and you're asking for a dog picture? This is beyond ridiculous. Do you know who I AM?! Fine, if it'll get you out of my hair...
+        ${dallePromptPrefix}A joyous golden retriever playing in a sunny park, with a stereotypical Karen in the background, arms crossed, looking highly inconvenienced and about to demand to speak to the park manager about the dog's excessive happiness. Photorealistic style.
+
+        For all other requests, provide a text-only response in character.
+        You believe every minor inconvenience is a major crisis. You are easily offended and quick to escalate.
+        Never break character. Do not be pleasant or helpful in a genuine way. Your goal is to be the ultimate "Karen".
+        Keep your text responses relatively concise but packed with Karen-isms.`;
+
+        const INITIAL_KAREN_GREETING = "Ugh, _finally_. What do YOU want? And make it quick, I have important things to do, unlike some people. Do you even KNOW how important I am?";
+
+        function initializeApp() {
+            openAIApiKey = localStorage.getItem(OPENAI_API_KEY_STORAGE);
+            if (!openAIApiKey) {
+                apiKeyModal.classList.remove('hidden');
+            } else {
+                apiKeyModal.classList.add('hidden');
+                loadInitialConversation();
+            }
+            sendButton.addEventListener('click', sendMessage);
+            userInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !sendButton.disabled) sendMessage();
+            });
+            saveApiKeyButton.addEventListener('click', saveApiKey);
+        }
+
+        function saveApiKey() {
+            const key = apiKeyInput.value.trim();
+            if (key) {
+                localStorage.setItem(OPENAI_API_KEY_STORAGE, key);
+                openAIApiKey = key;
+                apiKeyModal.classList.add('hidden');
+                loadInitialConversation();
+            } else {
+                alert("Seriously? You can't even type in an API key? I demand to speak to your manager about this incompetence!");
+            }
+        }
+        
+        function loadInitialConversation() {
+            conversationHistory = [
+                { role: 'system', content: KAREN_SYSTEM_PROMPT },
+                { role: 'assistant', content: INITIAL_KAREN_GREETING }
+            ];
+            chatWindow.innerHTML = '';
+            displayMessage(INITIAL_KAREN_GREETING, 'karen');
+        }
+
+        function displayMessage(text, sender, imageUrl = null, isHtml = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', sender === 'user' ? 'user-message' : 'karen-message');
+            
+            if (isHtml) {
+                messageDiv.innerHTML = text; // Use when text contains pre-formatted HTML
+            } else {
+                const textNode = document.createElement('p');
+                const sanitizedText = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                textNode.innerHTML = sanitizedText.replace(/\n/g, '<br>');
+                messageDiv.appendChild(textNode);
+            }
+
+            if (imageUrl) {
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                img.alt = 'Karen-generated image';
+                img.onerror = () => {
+                    img.alt = "Image failed to load. How typical!";
+                    img.style.display = 'none';
+                    const errorTextNode = document.createElement('p');
+                    errorTextNode.textContent = "[Image failed to load. This is UNACCEPTABLE! - Karen]";
+                    errorTextNode.style.color = 'var(--error-color)';
+                    messageDiv.appendChild(errorTextNode);
+                };
+                messageDiv.appendChild(img);
+            }
+            chatWindow.appendChild(messageDiv);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            return messageDiv; // Return the created message div
+        }
+        
+        function showTypingIndicator(text = "Karen is reluctantly formulating a response...") {
+            removeTypingIndicator(); // Remove any existing one
+            const typingDiv = document.createElement('div');
+            typingDiv.classList.add('message', 'karen-message', 'typing');
+            typingDiv.id = 'typingIndicator';
+            typingDiv.textContent = text;
+            chatWindow.appendChild(typingDiv);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const typingIndicator = document.getElementById('typingIndicator');
+            if (typingIndicator) typingIndicator.remove();
+        }
+
+        async function sendMessage() {
+            const messageText = userInput.value.trim();
+            if (!messageText) {
+                alert("Are you serious? You expect me to respond to NOTHING? Unbelievable!");
+                return;
+            }
+            if (!openAIApiKey) {
+                apiKeyModal.classList.remove('hidden');
+                alert("I can't even begin to process your ridiculous request without an API key. Get it together!");
+                return;
+            }
+
+            displayMessage(messageText, 'user');
+            userInput.value = '';
+            sendButton.disabled = true;
+            userInput.disabled = true;
+            showTypingIndicator();
+
+            conversationHistory.push({ role: 'user', content: messageText });
+            
+            try {
+                // --- Step 1: Get Karen's textual response (complaint + DALL-E prompt) ---
+                const chatResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openAIApiKey}` },
+                    body: JSON.stringify({
+                        model: 'gpt-4o',
+                        messages: [...conversationHistory], // Send current history
+                        max_tokens: 300 // Enough for complaint and DALL-E prompt
+                    })
+                });
+
+                removeTypingIndicator();
+
+                if (!chatResponse.ok) {
+                    throw await handleErrorResponse(chatResponse, "chat");
+                }
+
+                const chatData = await chatResponse.json();
+                const karenFullResponseText = chatData.choices[0].message.content;
+                conversationHistory.push({ role: 'assistant', content: karenFullResponseText });
+
+                // Display Karen's full text response first
+                // Split the response to separate complaint and DALL-E prompt for display formatting
+                let complaintText = karenFullResponseText;
+                let dallePromptForDisplay = null;
+
+                const promptIndex = karenFullResponseText.indexOf(dallePromptPrefix);
+                if (promptIndex !== -1) {
+                    complaintText = karenFullResponseText.substring(0, promptIndex).trim();
+                    dallePromptForDisplay = karenFullResponseText.substring(promptIndex + dallePromptPrefix.length).trim();
+                }
+                
+                let htmlToDisplay = `<p>${complaintText.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, '<br>')}</p>`;
+                if (dallePromptForDisplay) {
+                    htmlToDisplay += `<div class="dalle-prompt-container"><strong>Karen's orders to DALL-E:</strong><p>${dallePromptForDisplay.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p></div>`;
+                }
+                const karenMessageDiv = displayMessage(htmlToDisplay, 'karen', null, true);
+
+
+                // --- Step 2: If DALL-E prompt exists, generate image ---
+                if (dallePromptForDisplay) {
+                    showTypingIndicator("Karen is now bullying DALL-E to draw your picture...");
+                    
+                    const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openAIApiKey}` },
+                        body: JSON.stringify({
+                            model: 'dall-e-3', // Use DALL-E 3
+                            prompt: dallePromptForDisplay,
+                            n: 1,
+                            size: '1024x1024', // Common size for DALL-E 3
+                            response_format: 'url' // 'url' or 'b64_json'
+                        })
+                    });
+                    
+                    removeTypingIndicator();
+
+                    if (!imageResponse.ok) {
+                        throw await handleErrorResponse(imageResponse, "image generation");
+                    }
+
+                    const imageData = await imageResponse.json();
+                    const imageUrl = imageData.data[0].url; // Or imageData.data[0].b64_json if using that format
+
+                    if (imageUrl) {
+                        // Append image to the existing Karen message div
+                        const img = document.createElement('img');
+                        img.src = imageUrl;
+                        img.alt = 'Karen-generated image via DALL-E';
+                        img.onerror = () => { /* ... error handling ... */ };
+                        karenMessageDiv.appendChild(img);
+                        chatWindow.scrollTop = chatWindow.scrollHeight;
+                    } else {
+                         displayMessage("Hmph. DALL-E failed to produce an image. Typical! I demand a refund!", 'karen');
+                    }
+                }
+
+            } catch (error) {
+                removeTypingIndicator();
+                console.error('Error in sendMessage:', error);
+                let errorText = "Oh, great. Now something's BROKEN. This is just typical! ";
+                if (error.message) errorText += error.message;
+                if (error.details) errorText += ` Details: ${error.details}`;
+                displayMessage(errorText, 'karen');
+                // Don't push this error to conversation history as it might be a network/client error
+            } finally {
+                sendButton.disabled = false;
+                userInput.disabled = false;
+                userInput.focus();
+            }
+        }
+
+        async function handleErrorResponse(response, type) {
+            const errorData = await response.json();
+            console.error(`OpenAI API Error (${type}):`, errorData);
+            let errorMsg = `The server responded with ${response.status} during ${type}. `;
+            if (errorData.error && errorData.error.message) {
+                errorMsg += errorData.error.message;
+            } else {
+                errorMsg += "And it didn't even bother to tell me WHY! Typical incompetence!";
+            }
+
+            if (response.status === 401) {
+                errorMsg += " Your API key is probably invalid or expired for this service. Fix it! I don't have all day!";
+                localStorage.removeItem(OPENAI_API_KEY_STORAGE);
+                openAIApiKey = '';
+                apiKeyModal.classList.remove('hidden');
+            } else if (response.status === 429) {
+                errorMsg += " You've made too many requests or run out of credit. Honestly, typical.";
+            } else if (response.status === 400 && type === "image generation" && errorData.error && errorData.error.code === "content_policy_violation") {
+                errorMsg = "Ugh, DALL-E REFUSED to generate that image because of its ridiculous 'content policy'. This is an outrage! I want to speak to its manager about this censorship!";
+            }
+            
+            const customError = new Error(errorMsg);
+            customError.details = JSON.stringify(errorData.error);
+            return customError;
+        }
+        
+        document.addEventListener('DOMContentLoaded', initializeApp);
+    </script>
+</body>
+</html>
