@@ -1,0 +1,10 @@
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <!-- Main speech bubble body -->
+  <path d="M3 3 H29 C30.1046 3 31 3.89543 31 5 V19 C31 20.1046 30.1046 21 29 21 H18 L13 27 V21 H5 C3.89543 21 3 20.1046 3 19 V5 C3 3.89543 3.89543 3 5 3 Z" fill="#E91E63"/>
+  <!-- Exclamation mark -->
+  <text x="50%" y="12.5" dominant-baseline="middle" text-anchor="middle"
+        font-family="Arial, sans-serif" font-size="17" font-weight="bold"
+        fill="#FFFFFF">
+    !
+  </text>
+</svg>
